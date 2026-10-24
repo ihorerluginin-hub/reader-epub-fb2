@@ -1,0 +1,1145 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ридер — книги без посредников</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+<style>
+:root{
+  --font-serif: Georgia, 'Palatino Linotype', 'Times New Roman', serif;
+  --font-sans: 'Segoe UI', system-ui, Arial, sans-serif;
+  --font-ui: 'Segoe UI', system-ui, Arial, sans-serif;
+}
+body[data-theme="light"]{ --bg:#f7f6f3; --fg:#222226; --card:#ffffff; --line:#e4e1d8; --muted:#8a867c; --accent:#2563a8; --hover:rgba(0,0,0,.06); }
+body[data-theme="sepia"]{ --bg:#f1e7d0; --fg:#3f3222; --card:#f8f1df; --line:#dccfae; --muted:#8d7c5f; --accent:#9c6b2f; --hover:rgba(90,60,20,.08); }
+body[data-theme="dark"] { --bg:#191b1f; --fg:#ccd0d6; --card:#202329; --line:#2c3037; --muted:#7d838d; --accent:#7aa2f7; --hover:rgba(255,255,255,.07); }
+body[data-theme="black"]{ --bg:#000000; --fg:#a8adb5; --card:#0d0d0d; --line:#1e1e1e; --muted:#666b73; --accent:#7aa2f7; --hover:rgba(255,255,255,.08); }
+
+*{ box-sizing:border-box }
+[hidden]{ display:none !important }
+html,body{ margin:0; padding:0 }
+body{ background:var(--bg); color:var(--fg); font-family:var(--font-ui); font-size:15px; }
+
+button{ font-family:inherit }
+.btn{ background:none; border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:6px 12px; cursor:pointer; font-size:14px; white-space:nowrap }
+.btn:hover{ background:var(--hover) }
+
+/* ---------- библиотека ---------- */
+#library{ min-height:100vh; min-height:100dvh; display:flex; flex-direction:column }
+.lib-head{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 22px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:5 }
+.brand{ display:flex; align-items:baseline; gap:10px; margin-right:auto }
+.brand h1{ font-size:20px; margin:0; font-weight:700 }
+.brand .tagline{ color:var(--muted); font-size:13px }
+#search{ background:var(--card); border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:7px 10px; font-size:14px; width:200px }
+#sort{ background:var(--card); border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:7px 8px; font-size:14px }
+
+#shelf{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:20px; padding:26px 22px; max-width:1240px; margin:0 auto; width:100% }
+.book{ cursor:pointer; position:relative }
+.cover{ aspect-ratio:2/3; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--card); box-shadow:0 2px 10px rgba(0,0,0,.08); transition:transform .12s ease }
+.book:hover .cover{ transform:translateY(-3px) }
+.cover img{ width:100%; height:100%; object-fit:cover; display:block }
+.gen{ width:100%; height:100%; display:flex; flex-direction:column; justify-content:flex-end; padding:12px; color:#fff }
+.gen-a{ font-size:10px; opacity:.75; text-transform:uppercase; letter-spacing:.08em }
+.gen-t{ font-family:var(--font-serif); font-size:17px; line-height:1.25; margin-top:6px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical }
+.b-title{ font-size:14px; margin-top:8px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.b-author{ color:var(--muted); font-size:12px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.progress{ height:3px; background:var(--line); border-radius:2px; margin-top:7px; overflow:hidden }
+.progress i{ display:block; height:100%; background:var(--accent) }
+.del{ position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%; border:0; background:rgba(0,0,0,.55); color:#fff; font-size:16px; line-height:1; cursor:pointer; opacity:0; transition:opacity .15s }
+.book:hover .del, .del:focus-visible{ opacity:1 }
+
+#count{ color:var(--muted); font-size:13px; padding:0 22px 8px; text-align:center }
+
+.empty{ max-width:600px; margin:6vh auto; padding:0 24px; text-align:center }
+.empty h2{ font-size:26px; margin:0 0 14px }
+.empty-lead{ font-size:16px }
+.manifesto{ list-style:none; padding:0; margin:26px 0; text-align:left; display:flex; flex-direction:column; gap:10px }
+.manifesto li{ padding:12px 16px; border:1px solid var(--line); border-radius:10px; background:var(--card); line-height:1.45 }
+.empty-note{ color:var(--muted); font-style:italic }
+.lib-foot{ margin-top:auto; padding:18px; text-align:center; color:var(--muted); font-size:13px; border-top:1px solid var(--line) }
+
+/* ---------- читалка ---------- */
+#reader{ position:fixed; inset:0; display:flex; flex-direction:column; background:var(--bg); z-index:10 }
+.rd-head,.rd-foot{ display:flex; align-items:center; gap:10px; padding:0 14px; min-height:48px; flex:0 0 auto }
+.rd-head{ border-bottom:1px solid var(--line) }
+.rd-foot{ border-top:1px solid var(--line) }
+#rdTitle{ flex:1; text-align:center; color:var(--muted); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+#prog{ flex:1; accent-color:var(--accent) }
+#progPage{ color:var(--muted); font-size:13px; min-width:72px; text-align:right }
+#progPct{ color:var(--muted); font-size:13px; min-width:44px; text-align:right }
+
+#scroller{ flex:1; overflow-x:auto; overflow-y:hidden; scrollbar-width:none }
+#scroller::-webkit-scrollbar{ display:none }
+#flow{
+  box-sizing:border-box; column-fill:auto; overflow:visible;
+  font-family:var(--rfont,var(--font-serif)); font-size:var(--fs,20px); line-height:var(--rlh,1.55);
+  text-align:var(--ralign,start); hyphens:var(--rhyph,auto); -webkit-hyphens:var(--rhyph,auto);
+  color:var(--fg); position:relative; word-wrap:break-word;
+}
+#flow p{ margin:0 0 .45em; text-indent:1.25em }
+#flow p:first-child, #flow h1+p, #flow h2+p, #flow h3+p, #flow h4+p, #flow .poem p, #flow blockquote p{ text-indent:0 }
+#flow h1{ font-size:1.55em; line-height:1.25; margin:1em 0 .7em }
+#flow h2{ font-size:1.3em; line-height:1.25; margin:1.1em 0 .7em }
+#flow h3,#flow h4,#flow h5,#flow h6{ font-size:1.1em; margin:.9em 0 .5em }
+#flow h1,#flow h2{ break-after:avoid }
+#flow img{ max-width:100%; max-height:var(--colh,80vh); object-fit:contain; display:block; margin:.8em auto; break-inside:avoid }
+#flow a{ color:var(--accent); text-decoration:none }
+#flow a:hover{ text-decoration:underline }
+#flow blockquote{ margin:.8em 1.2em }
+#flow table{ border-collapse:collapse; margin:.9em 0; font-size:.92em }
+#flow td,#flow th{ border:1px solid var(--line); padding:3px 8px; text-indent:0; text-align:left }
+#flow hr{ border:0; border-top:1px solid var(--line); margin:1.2em auto; width:40% }
+
+.chapter{ break-before:column }
+.titlepage{ break-before:column; height:100%; display:flex; flex-direction:column; justify-content:center; text-align:center }
+.tp-author{ font-size:.95em; letter-spacing:.1em; text-transform:uppercase; color:var(--muted) }
+.tp-title{ font-family:var(--font-serif); font-size:2em; line-height:1.2; margin:.5em .4em; font-weight:700; text-indent:0 }
+.tp-annot{ max-width:40ch; margin:1.4em auto 0; font-size:.85em; color:var(--muted); font-style:italic }
+.tp-annot p{ text-indent:0 }
+
+.epigraph{ margin:.9em 2em 1em; padding-left:1em; border-left:2px solid var(--line); color:var(--muted); font-style:italic }
+.text-author{ text-align:right; color:var(--muted); font-style:italic }
+.poem{ margin:1em 0 }
+.poem-title{ text-align:center; font-style:italic; color:var(--muted); margin:.6em 0 }
+.stanza{ margin:.7em 0; break-inside:avoid }
+.verse{ margin:0 }
+.subtitle{ text-align:center; font-style:italic; margin:.9em 0 }
+.empty-line{ height:.9em }
+.fb-notes{ font-size:.85em; color:var(--muted) }
+.fb-notes h2{ font-size:1.15em }
+sup a{ text-decoration:none }
+.endpad{ display:inline-block; height:1px; width:calc(100% + var(--endpad,0px)) }
+
+.loading,.loaderr{ padding:3em 2em; text-align:center; color:var(--muted); font-size:16px; text-indent:0 }
+.loaderr{ max-width:46ch; margin:0 auto }
+
+/* ---------- панели ---------- */
+.drawer{ position:absolute; top:0; right:0; bottom:0; width:min(360px,92vw); background:var(--card); border-left:1px solid var(--line); z-index:20; overflow-y:auto; padding:16px 18px; box-shadow:-10px 0 30px rgba(0,0,0,.15) }
+.drawer h3{ margin:4px 0 12px; font-size:16px }
+.drawer .close{ position:absolute; top:10px; right:12px; border:0; background:none; color:var(--muted); font-size:22px; cursor:pointer }
+.toc-item{ display:block; width:100%; text-align:left; background:none; border:0; color:var(--fg); padding:8px 6px; cursor:pointer; border-radius:6px; font-size:14px; line-height:1.35 }
+.toc-item:hover{ background:var(--hover) }
+.toc-empty{ color:var(--muted); padding:10px 4px }
+.set-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:14px 0 }
+.set-row label{ font-size:14px }
+.set-row input[type=range]{ width:160px; accent-color:var(--accent) }
+.set-row input[type=checkbox]{ width:18px; height:18px; accent-color:var(--accent) }
+.pills{ display:flex; gap:6px; flex-wrap:wrap }
+.pill{ border:1px solid var(--line); background:none; color:var(--fg); border-radius:999px; padding:5px 12px; cursor:pointer; font-size:13px }
+.pill.active{ background:var(--accent); border-color:var(--accent); color:#fff }
+.set-val{ color:var(--muted); font-size:12px; min-width:44px; text-align:right }
+.hint{ color:var(--muted); font-size:12.5px; line-height:1.5; margin-top:16px; border-top:1px solid var(--line); padding-top:12px }
+
+/* ---------- прочее ---------- */
+#drop{ position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; display:flex; align-items:center; justify-content:center }
+#drop .box{ border:3px dashed rgba(255,255,255,.75); border-radius:16px; padding:44px 60px; color:#fff; font-size:20px; text-align:center }
+#toasts{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:70; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none }
+.toast{ background:var(--fg); color:var(--bg); padding:10px 18px; border-radius:10px; font-size:14px; max-width:80vw; box-shadow:0 6px 24px rgba(0,0,0,.25); animation:tin .2s ease }
+@keyframes tin{ from{ opacity:0; transform:translateY(8px) } to{ opacity:1 } }
+
+#modal{ position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50; display:flex; align-items:center; justify-content:center; padding:20px }
+.modal-card{ background:var(--card); color:var(--fg); max-width:580px; width:100%; padding:26px 30px; border-radius:14px; border:1px solid var(--line); max-height:86vh; overflow-y:auto }
+.modal-card h2{ margin:0 0 10px }
+.modal-card h3{ margin:18px 0 8px; font-size:15px }
+.modal-card ul{ margin:8px 0; padding-left:20px; line-height:1.6 }
+.modal-card p{ line-height:1.55 }
+.modal-card .muted{ color:var(--muted); font-size:13.5px }
+.modal-card .btn{ margin-top:14px }
+
+@media (max-width:640px){
+  .brand .tagline{ display:none }
+  #shelf{ grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:14px; padding:18px 14px }
+}
+</style>
+</head>
+<body data-theme="sepia">
+
+<!-- ======================= БИБЛИОТЕКА ======================= -->
+<div id="library">
+  <header class="lib-head">
+    <div class="brand">
+      <h1>Ридер</h1>
+      <span class="tagline">без аккаунтов · без подписок · без сети</span>
+    </div>
+    <input type="search" id="search" placeholder="Поиск по названию и автору">
+    <select id="sort" title="Сортировка">
+      <option value="recent">Недавние</option>
+      <option value="added">Новые</option>
+      <option value="title">По названию</option>
+      <option value="author">По автору</option>
+    </select>
+    <button class="btn" id="addBtn">Добавить книги</button>
+    <button class="btn" id="aboutBtn" title="Что это такое">?</button>
+  </header>
+  <main id="shelf"></main>
+  <div id="count"></div>
+  <div class="empty" id="empty" hidden>
+    <h2>Библиотека пуста</h2>
+    <p class="empty-lead">Перетащи сюда <b>.epub</b> или <b>.fb2</b> — или нажми «Добавить книги».</p>
+    <ul class="manifesto">
+      <li><b>Без аккаунтов.</b> Ни логина, ни почты, ни «продолжить через Google». Просто книги.</li>
+      <li><b>Без подписок.</b> Чтение — не абонентская плата, а страница — не услуга.</li>
+      <li><b>Без сети.</b> Здесь нет ни одного запроса в интернет. Выключи сеть и проверь.</li>
+      <li><b>Без «облака».</b> Книги лежат в хранилище этого браузера — у тебя дома, а не у кого-то ещё.</li>
+    </ul>
+    <p class="empty-note">Современный ридер просит войти. Этот просит только книги.</p>
+  </div>
+  <footer class="lib-foot">Твои книги — твои. Один файл, работает офлайн, ничего не отправляет.</footer>
+</div>
+
+<!-- ======================= ЧИТАЛКА ======================= -->
+<div id="reader" hidden>
+  <header class="rd-head">
+    <button class="btn" id="backBtn">← Библиотека</button>
+    <div id="rdTitle"></div>
+    <button class="btn" id="tocBtn">Содержание</button>
+    <button class="btn" id="setBtn" title="Настройки">Aa</button>
+  </header>
+  <div id="scroller"><div id="flow"></div></div>
+  <footer class="rd-foot">
+    <input type="range" id="prog" min="0" max="1" value="0" step="1" aria-label="Прогресс">
+    <span id="progPct"></span>
+    <span id="progPage"></span>
+  </footer>
+
+  <aside class="drawer" id="tocDrawer" hidden>
+    <button class="close" title="Закрыть">×</button>
+    <h3>Содержание</h3>
+    <div id="tocList"></div>
+  </aside>
+
+  <aside class="drawer" id="setDrawer" hidden>
+    <button class="close" title="Закрыть">×</button>
+    <h3>Настройки</h3>
+    <div class="set-row"><label>Тема</label>
+      <div class="pills" id="setTheme">
+        <button class="pill" data-v="light">Светлая</button>
+        <button class="pill" data-v="sepia">Сепия</button>
+        <button class="pill" data-v="dark">Тёмная</button>
+        <button class="pill" data-v="black">Чёрная</button>
+      </div>
+    </div>
+    <div class="set-row"><label>Шрифт</label>
+      <div class="pills" id="setFont">
+        <button class="pill" data-v="serif">С засечками</button>
+        <button class="pill" data-v="sans">Без засечек</button>
+      </div>
+    </div>
+    <div class="set-row"><label>Кегль</label>
+      <input type="range" id="setSize" min="14" max="28" step="1"><span class="set-val" id="sizeVal"></span>
+    </div>
+    <div class="set-row"><label>Интерлиньяж</label>
+      <input type="range" id="setLh" min="1.2" max="2" step="0.05"><span class="set-val" id="lhVal"></span>
+    </div>
+    <div class="set-row"><label>Поля</label>
+      <input type="range" id="setMargin" min="24" max="96" step="8"><span class="set-val" id="marginVal"></span>
+    </div>
+    <div class="set-row"><label>Выключка по ширине</label><input type="checkbox" id="setJustify"></div>
+    <div class="set-row"><label>Переносы слов</label><input type="checkbox" id="setHyph"></div>
+    <button class="btn" id="setReset">Сбросить настройки</button>
+    <div class="hint">Клавиши: ← → листают страницы, Home/End — края, Esc — обратно в библиотеку. Мышь — колесо или клик по краю страницы. На телефоне — свайп.</div>
+  </aside>
+</div>
+
+<!-- ======================= СЛУЖЕБНОЕ ======================= -->
+<div id="drop" hidden><div class="box">Отпускай — добавлю в библиотеку</div></div>
+<div id="toasts"></div>
+
+<div id="modal" hidden>
+  <div class="modal-card">
+    <h2>Ридер</h2>
+    <p>Страница, которая читает EPUB и FB2. Вся библиотека живёт в хранилище этого браузера — импортировал, и книга твоя.</p>
+    <h3>Чего здесь нет — и не будет</h3>
+    <ul>
+      <li>аккаунтов и «войдите, чтобы продолжить чтение»;</li>
+      <li>подписок, пробных периодов и «премиум-скорости» перелистывания;</li>
+      <li>рекламы между абзацами;</li>
+      <li>телеметрии — открой DevTools → Сеть и убедись: запросов нет;</li>
+      <li>«облака»: книги не покидают твой компьютер.</li>
+    </ul>
+    <p>Современные ридеры научили нас, что купленная книга — это аренда, а чтение — услуга по логину и паролю. Это страница — маленькое возражение: книга была твоей ещё до того, как ты её открыл.</p>
+    <p class="muted">Всё приложение — один HTML-файл без единой зависимости. Открой его блокнотом: там нет ничего, чего ты бы там не хотел видеть.</p>
+    <button class="btn" id="modalClose">Понятно</button>
+  </div>
+</div>
+
+<input type="file" id="fileInput" multiple accept=".epub,.fb2,.zip,application/epub+zip,application/zip,application/x-fictionbook+xml,application/fb2+xml,application/xml,text/xml,application/octet-stream" hidden>
+
+<script>
+'use strict';
+/* ============================================================
+   Ридер EPUB/FB2. Один файл, ноль зависимостей, ноль запросов.
+   ============================================================ */
+
+const $=s=>document.querySelector(s);
+const flow=$('#flow'), scroller=$('#scroller'), readerEl=$('#reader'), libEl=$('#library');
+const shelfEl=$('#shelf'), emptyEl=$('#empty'), countEl=$('#count');
+const prog=$('#prog'), progPct=$('#progPct'), progPage=$('#progPage'), rdTitle=$('#rdTitle');
+const tocDrawer=$('#tocDrawer'), setDrawer=$('#setDrawer'), tocList=$('#tocList');
+const aboutM=$('#modal'), dropEl=$('#drop'), toastsEl=$('#toasts');
+
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():'b'+Date.now().toString(36)+Math.random().toString(36).slice(2));
+const decodeSafe=s=>{ try{ return decodeURIComponent(s); }catch(e){ return s; } };
+const hash=s=>{ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))>>>0; return h; };
+const td=u8=>new TextDecoder('utf-8').decode(u8);
+const mimeFromName=n=>{ n=n.toLowerCase(); if(/\.png$/.test(n))return'image/png'; if(/\.jpe?g$/.test(n))return'image/jpeg'; if(/\.gif$/.test(n))return'image/gif'; if(/\.svg$/.test(n))return'image/svg+xml'; if(/\.webp$/.test(n))return'image/webp'; return'image/png'; };
+function plural(n){ const a=n%10,b=n%100; if(a===1&&b!==11)return'книга'; if(a>=2&&a<=4&&(b<12||b>14))return'книги'; return'книг'; }
+function toast(msg,ms=4000){ const d=document.createElement('div'); d.className='toast'; d.textContent=msg; toastsEl.appendChild(d); setTimeout(()=>d.remove(),ms); }
+
+/* ---------- IndexedDB ---------- */
+function idbReq(r){ return new Promise((res,rej)=>{ r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+const idb={
+  _p:null,
+  open(){ if(this._p) return this._p;
+    this._p=new Promise((res,rej)=>{ const r=indexedDB.open('chitalka-offline',1);
+      r.onupgradeneeded=()=>{ r.result.createObjectStore('books',{keyPath:'id'}); };
+      r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+    return this._p; },
+  async put(v){ const db=await this.open(); return idbReq(db.transaction('books','readwrite').objectStore('books').put(v)); },
+  async all(){ const db=await this.open(); return idbReq(db.transaction('books').objectStore('books').getAll()); },
+  async get(id){ const db=await this.open(); return idbReq(db.transaction('books').objectStore('books').get(id)); },
+  async del(id){ const db=await this.open(); return idbReq(db.transaction('books','readwrite').objectStore('books').delete(id)); },
+  async update(id,patch){ const v=await this.get(id); if(!v) return; Object.assign(v,patch); await this.put(v); },
+};
+
+/* ---------- настройки ---------- */
+const DEFAULTS={ theme:'sepia', font:'serif', size:20, lh:1.55, justify:true, hyph:true, margin:64, sort:'recent' };
+let S; try{ S=Object.assign({},DEFAULTS,JSON.parse(localStorage.getItem('reader-settings')||'{}')); }catch(e){ S=Object.assign({},DEFAULTS); }
+function saveSettings(){ try{ localStorage.setItem('reader-settings',JSON.stringify(S)); }catch(e){} }
+function applySettings(){
+  document.body.dataset.theme=S.theme;
+  document.body.style.setProperty('--fs',S.size+'px');
+  document.body.style.setProperty('--rlh',S.lh);
+  document.body.style.setProperty('--rfont',S.font==='serif'?'var(--font-serif)':'var(--font-sans)');
+  document.body.style.setProperty('--ralign',S.justify?'justify':'start');
+  document.body.style.setProperty('--rhyph',S.hyph?'auto':'manual');
+  $('#sort').value=S.sort;
+  $('#setTheme').querySelectorAll('.pill').forEach(b=>b.classList.toggle('active',b.dataset.v===S.theme));
+  $('#setFont').querySelectorAll('.pill').forEach(b=>b.classList.toggle('active',b.dataset.v===S.font));
+  $('#setSize').value=S.size; $('#sizeVal').textContent=S.size+'px';
+  $('#setLh').value=S.lh; $('#lhVal').textContent=(+S.lh).toFixed(2);
+  $('#setMargin').value=S.margin; $('#marginVal').textContent=S.margin+'px';
+  $('#setJustify').checked=S.justify; $('#setHyph').checked=S.hyph;
+}
+
+/* ---------- ZIP (свой парсер) ---------- */
+class Zip{
+  constructor(buf){
+    const u8=buf instanceof Uint8Array?buf:new Uint8Array(buf);
+    this.u8=u8;
+    const dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength);
+    let eocd=-1;
+    for(let i=u8.length-22;i>=Math.max(0,u8.length-22-65535);i--){
+      if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; }
+    }
+    if(eocd<0) throw new Error('это не ZIP-архив');
+    const count=dv.getUint16(eocd+10,true);
+    const cdOff=dv.getUint32(eocd+16,true);
+    if(count===0xFFFF||cdOff===0xFFFFFFFF) throw new Error('ZIP64 не поддерживается');
+    this.entries=new Map();
+    let off=cdOff;
+    for(let i=0;i<count;i++){
+      if(off+46>u8.length||dv.getUint32(off,true)!==0x02014b50) break;
+      const flags=dv.getUint16(off+8,true);
+      const method=dv.getUint16(off+10,true);
+      const compSize=dv.getUint32(off+20,true);
+      const nameLen=dv.getUint16(off+28,true);
+      const extraLen=dv.getUint16(off+30,true);
+      const cmtLen=dv.getUint16(off+32,true);
+      const localOff=dv.getUint32(off+42,true);
+      const name=td(u8.subarray(off+46,off+46+nameLen));
+      this.entries.set(name,{method,compSize,localOff});
+      off+=46+nameLen+extraLen+cmtLen;
+    }
+  }
+  has(n){ return this.entries.has(n); }
+  names(){ return [...this.entries.keys()]; }
+  async read(name){
+    const e=this.entries.get(name);
+    if(!e) throw new Error('нет файла в архиве: '+name);
+    const dv=new DataView(this.u8.buffer,this.u8.byteOffset,this.u8.byteLength);
+    const lo=e.localOff;
+    if(lo+30>this.u8.length||dv.getUint32(lo,true)!==0x04034b50) throw new Error('битый ZIP (локальный заголовок)');
+    const nameLen=dv.getUint16(lo+26,true), extraLen=dv.getUint16(lo+28,true);
+    const start=lo+30+nameLen+extraLen;
+    const raw=this.u8.subarray(start,start+e.compSize);
+    if(e.method===0) return raw;
+    if(e.method===8) return Zip.inflate(raw);
+    throw new Error('метод сжатия '+e.method+' не поддерживается');
+  }
+  async blob(name){ const d=await this.read(name); return new Blob([d],{type:mimeFromName(name)}); }
+  static async inflate(raw){
+    if(!('DecompressionStream' in window)) throw new Error('браузер без DecompressionStream — нужен современный Chrome/Firefox/Safari');
+    const st=new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(st).arrayBuffer());
+  }
+}
+async function zipRead(zip,path){
+  if(zip.has(path)) return zip.read(path);
+  const dec=decodeSafe(path); if(dec!==path&&zip.has(dec)) return zip.read(dec);
+  const enc=encodeURI(path); if(enc!==path&&zip.has(enc)) return zip.read(enc);
+  return null;
+}
+
+/* ---------- утилиты путей ---------- */
+function resolvePath(baseDir,rel){
+  rel=String(rel||'').split('#')[0];
+  const parts=String(baseDir||'').split('/').filter(Boolean);
+  for(const p of rel.split('/')){ if(!p||p==='.')continue; if(p==='..')parts.pop(); else parts.push(p); }
+  return parts.join('/');
+}
+const dirOf=p=>{ const i=p.lastIndexOf('/'); return i<0?'':p.slice(0,i+1); };
+
+/* ---------- очистка XHTML из EPUB ---------- */
+function sanitize(root){
+  root.querySelectorAll('script,style,link,meta,iframe,object,embed,form,input,button,select,textarea,audio,video,base').forEach(e=>e.remove());
+  root.querySelectorAll('*').forEach(el=>{
+    for(const attr of [...el.attributes]){
+      const n=attr.name.toLowerCase();
+      if(n.startsWith('on')) el.removeAttribute(attr.name);
+      else if(n==='style'){
+        const keep=attr.value.split(';').map(s=>s.trim())
+          .filter(s=>/^(text-align|text-indent|margin-left|margin-right|text-transform)\s*:/i.test(s)).join('; ');
+        if(keep) el.setAttribute('style',keep); else el.removeAttribute('style');
+      }
+      else if(n==='srcset'||n==='sizes') el.removeAttribute(attr.name);
+    }
+    if(el.tagName.toLowerCase()==='a'){
+      const href=el.getAttribute('href')||el.getAttribute('xlink:href')||'';
+      if(/^javascript:/i.test(href)) el.removeAttribute('href');
+    }
+  });
+}
+async function resolveImages(doc,zip,dir){
+  const jobs=[];
+  const handle=(el,attrs)=>{
+    for(const an of attrs){
+      const v=el.getAttribute(an);
+      if(!v||/^(https?:|data:|blob:)/i.test(v)) continue;
+      jobs.push((async()=>{
+        const p=resolvePath(dir,decodeSafe(v));
+        const bytes=await zipRead(zip,p);
+        if(!bytes){ el.removeAttribute(an); return; }
+        const url=URL.createObjectURL(new Blob([bytes],{type:mimeFromName(p)}));
+        el.setAttribute(an,url);
+      })());
+    }
+  };
+  doc.querySelectorAll('img').forEach(el=>handle(el,['src']));
+  doc.querySelectorAll('image').forEach(el=>handle(el,['href','xlink:href','src']));
+  await Promise.all(jobs);
+}
+
+/* ---------- EPUB ---------- */
+async function parseEpub(file,opts={}){
+  const zip=new Zip(file);
+  if(zip.has('META-INF/encryption.xml')){ const e=new Error('drm'); e.drm=true; throw e; }
+  const contB=await zipRead(zip,'META-INF/container.xml');
+  if(!contB) throw new Error('в архиве нет META-INF/container.xml — это не EPUB');
+  const cont=new DOMParser().parseFromString(td(contB),'application/xml');
+  const rootfile=cont.querySelector('rootfile');
+  if(!rootfile) throw new Error('container.xml без rootfile');
+  const opfPath=resolvePath('',rootfile.getAttribute('full-path'));
+  const opfB=await zipRead(zip,opfPath);
+  if(!opfB) throw new Error('не нашёл OPF-файл: '+opfPath);
+  const opf=new DOMParser().parseFromString(td(opfB),'application/xml');
+  const opfDir=dirOf(opfPath);
+  const xtag=(doc,name)=>doc.getElementsByTagName(name)[0];
+  const titleEl=xtag(opf,'dc:title')||xtag(opf,'title');
+  const title=titleEl?titleEl.textContent.trim():'';
+  const authorEl=xtag(opf,'dc:creator')||xtag(opf,'creator');
+  const author=authorEl?authorEl.textContent.trim():'';
+  const langEl=xtag(opf,'dc:language')||xtag(opf,'language');
+  const lang=langEl?langEl.textContent.trim():'';
+  const descEl=xtag(opf,'dc:description')||xtag(opf,'description');
+  const annotation=descEl?descEl.textContent.trim():'';
+
+  const manifest={};
+  opf.querySelectorAll('manifest > item').forEach(it=>{
+    manifest[it.getAttribute('id')]={ href:it.getAttribute('href')||'', type:it.getAttribute('media-type')||'', props:it.getAttribute('properties')||'' };
+  });
+  const spineItems=[];
+  opf.querySelectorAll('spine > itemref').forEach(ir=>{
+    const it=manifest[ir.getAttribute('idref')];
+    if(it) spineItems.push(it);
+  });
+  const spineIndex=new Map();
+  spineItems.forEach((it,i)=>spineIndex.set(resolvePath(opfDir,decodeSafe(it.href)),i));
+
+  /* обложка */
+  let coverPath=null;
+  for(const id in manifest){ if(/\bcover-image\b/.test(manifest[id].props)){ coverPath=resolvePath(opfDir,decodeSafe(manifest[id].href)); break; } }
+  if(!coverPath){ const m=opf.querySelector('meta[name=cover]'); if(m){ const it=manifest[m.getAttribute('content')]; if(it) coverPath=resolvePath(opfDir,decodeSafe(it.href)); } }
+  if(!coverPath){ for(const id in manifest){ if(/^image\//.test(manifest[id].type)){ coverPath=resolvePath(opfDir,decodeSafe(manifest[id].href)); break; } } }
+  let coverBlob=null;
+  if(coverPath){ const b=await zipRead(zip,coverPath); if(b) coverBlob=new Blob([b],{type:mimeFromName(coverPath)}); }
+
+  if(opts.metaOnly) return { title,author,lang,coverBlob,fmt:'epub' };
+
+  /* главы */
+  const outDoc=document.implementation.createHTMLDocument('book');
+  const chapters=[];
+  const chapterBySpine=new Map();
+  for(let i=0;i<spineItems.length;i++){
+    const it=spineItems[i];
+    if(!/xhtml|html/i.test(it.type)) continue;
+    const path=resolvePath(opfDir,decodeSafe(it.href));
+    const bytes=await zipRead(zip,path);
+    if(!bytes){ console.warn('нет файла в epub:',path); continue; }
+    let doc;
+    try{ doc=new DOMParser().parseFromString(td(bytes),'text/html'); }catch(e){ continue; }
+    const body=doc.body;
+    if(!body) continue;
+    sanitize(body);
+    await resolveImages(doc,zip,dirOf(path));
+    const sec=outDoc.createElement('section');
+    sec.className='chapter'; sec.id='sp'+i;
+    for(const ch of [...body.childNodes]) sec.appendChild(outDoc.importNode(ch,true));
+    const c={ sec, dir:dirOf(path), ids:new Map(), spineIdx:i };
+    chapters.push(c); chapterBySpine.set(i,c);
+  }
+  chapters.forEach(c=>{
+    c.sec.querySelectorAll('[id]').forEach(el=>{
+      if(!el.id) return;
+      const nid='c'+c.spineIdx+'-'+el.id;
+      c.ids.set(el.id,nid); el.id=nid;
+    });
+  });
+  const tocTarget=(baseDir,href)=>{
+    const qi=href.indexOf('#');
+    const rawPath=qi<0?href:href.slice(0,qi);
+    const frag=qi<0?'':href.slice(qi+1);
+    const target=resolvePath(baseDir,decodeSafe(rawPath));
+    const k=spineIndex.get(target);
+    if(k==null) return null;
+    const tc=chapterBySpine.get(k);
+    if(frag){ const nid=tc&&tc.ids.get(frag); return nid?'#'+nid:'#sp'+k; }
+    return '#sp'+k;
+  };
+  chapters.forEach(c=>{
+    c.sec.querySelectorAll('a').forEach(a=>{
+      let href=a.getAttribute('href')||a.getAttribute('xlink:href')||'';
+      if(!href) return;
+      if(/^(https?:|mailto:)/i.test(href)){ a.setAttribute('target','_blank'); a.setAttribute('rel','noopener'); return; }
+      if(a.getAttribute('xlink:href')&&!a.getAttribute('href')) a.setAttribute('href',href);
+      const qi=href.indexOf('#');
+      const rawPath=qi<0?href:href.slice(0,qi);
+      const frag=qi<0?'':href.slice(qi+1);
+      if(!rawPath){
+        if(frag){ if(c.ids.has(frag)) a.setAttribute('href','#'+c.ids.get(frag)); else a.removeAttribute('href'); }
+        return;
+      }
+      const target=resolvePath(c.dir,decodeSafe(rawPath));
+      const k=spineIndex.get(target);
+      if(k==null){ a.removeAttribute('href'); return; }
+      const tc=chapterBySpine.get(k);
+      if(frag){ const nid=tc&&tc.ids.get(frag); a.setAttribute('href','#'+(nid||('sp'+k))); }
+      else a.setAttribute('href','#sp'+k);
+    });
+  });
+
+  /* оглавление: EPUB3 nav */
+  let toc=[];
+  let navPath=null;
+  for(const id in manifest){ if(/\bnav\b/.test(manifest[id].props)){ navPath=resolvePath(opfDir,decodeSafe(manifest[id].href)); break; } }
+  if(navPath){
+    const b=await zipRead(zip,navPath);
+    if(b){
+      const nd=new DOMParser().parseFromString(td(b),'text/html');
+      let navEl=[...nd.querySelectorAll('nav')].find(n=>/toc/.test(n.getAttribute('epub:type')||''))||nd.querySelector('nav');
+      const ol=navEl&&navEl.querySelector('ol');
+      const walk=(list,depth)=>{
+        for(const li of list.children){
+          if(li.localName!=='li') continue;
+          const a=li.querySelector(':scope > a');
+          if(a&&a.getAttribute('href')){
+            const label=(a.textContent||'').replace(/\s+/g,' ').trim();
+            const t=tocTarget(dirOf(navPath),a.getAttribute('href'));
+            if(t&&label) toc.push({depth,label,target:t});
+          }
+          const sub=li.querySelector(':scope > ol');
+          if(sub) walk(sub,depth+1);
+        }
+      };
+      if(ol) walk(ol,0);
+    }
+  }
+  /* оглавление: EPUB2 NCX */
+  if(!toc.length){
+    const spineEl=opf.querySelector('spine');
+    const tocAttr=spineEl&&spineEl.getAttribute('toc');
+    let ncxItem=(tocAttr&&manifest[tocAttr])||null;
+    if(!ncxItem) for(const id in manifest){ if(/dtbncx/.test(manifest[id].type)){ ncxItem=manifest[id]; break; } }
+    if(ncxItem){
+      const ncxPath=resolvePath(opfDir,decodeSafe(ncxItem.href));
+      const b=await zipRead(zip,ncxPath);
+      if(b){
+        const nd=new DOMParser().parseFromString(td(b),'application/xml');
+        const navMap=nd.getElementsByTagName('navMap')[0];
+        const walk=(parent,depth)=>{
+          for(const np of [...parent.children]){
+            if(np.localName!=='navPoint') continue;
+            const lbl=[...np.children].find(e=>e.localName==='navLabel');
+            const textEl=lbl&&[...lbl.children].find(e=>e.localName==='text');
+            const cEl=[...np.children].find(e=>e.localName==='content');
+            const href=cEl&&cEl.getAttribute('src');
+            if(textEl&&href){
+              const t=tocTarget(dirOf(ncxPath),href);
+              if(t) toc.push({depth,label:(textEl.textContent||'').replace(/\s+/g,' ').trim(),target:t});
+            }
+            walk(np,depth+1);
+          }
+        };
+        if(navMap) walk(navMap,0);
+      }
+    }
+  }
+  /* оглавление из заголовков глав */
+  if(!toc.length){
+    chapters.forEach(c=>{
+      const h=c.sec.querySelector('h1,h2,h3');
+      const label=h?h.textContent.replace(/\s+/g,' ').trim():'';
+      if(label) toc.push({depth:0,label,target:'#sp'+c.spineIdx});
+    });
+  }
+
+  const tp=outDoc.createElement('section');
+  tp.className='titlepage'; tp.id='tp';
+  tp.innerHTML=`<div class="tp-author">${esc(author||'')}</div><h1 class="tp-title">${esc(title||'Без названия')}</h1>`+
+    (annotation?`<div class="tp-annot">${esc(annotation)}</div>`:'');
+  return { title,author,lang,coverBlob,toc,content:[tp,...chapters.map(c=>c.sec)] };
+}
+
+/* ---------- FB2 ---------- */
+function decodeFb2(bytes){
+  const u8=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);
+  const head=new TextDecoder('utf-8').decode(u8.subarray(0,Math.min(1024,u8.length)));
+  const m=head.match(/encoding\s*=\s*["']([^"']+)["']/i);
+  const enc=m?m[1].toLowerCase():'utf-8';
+  if(enc==='utf-8'||enc==='utf8') return new TextDecoder('utf-8').decode(u8);
+  try{ return new TextDecoder(enc).decode(u8); }
+  catch(e){ console.warn('кодировка '+enc+' не поддержана, читаю как utf-8'); return new TextDecoder('utf-8').decode(u8); }
+}
+function fb2SectionDepth(node){
+  let d=0,p=node.parentNode;
+  while(p&&p.localName!=='body'){ if(p.localName==='section')d++; p=p.parentNode; }
+  return d;
+}
+function walkFb2(src,dst,ctx,inPoem){
+  const doc=ctx.doc;
+  for(const n of [...src.childNodes]){
+    if(n.nodeType===3){ dst.appendChild(doc.createTextNode(n.textContent.replace(/\s+/g,' '))); continue; }
+    if(n.nodeType!==1) continue;
+    const t=n.localName;
+    const mk=(tag,cls)=>{
+      const e=doc.createElement(tag);
+      if(cls) e.className=cls;
+      walkFb2(n,e,ctx,cls==='poem');
+      dst.appendChild(e);
+    };
+    switch(t){
+      case 'p': mk('p'); break;
+      case 'empty-line': { const e=doc.createElement('div'); e.className='empty-line'; dst.appendChild(e); break; }
+      case 'subtitle': mk('p','subtitle'); break;
+      case 'title':
+        if(inPoem) mk('div','poem-title');
+        else mk('h2','fb-title');
+        break;
+      case 'epigraph': mk('blockquote','epigraph'); break;
+      case 'cite': mk('blockquote','cite'); break;
+      case 'text-author': mk('p','text-author'); break;
+      case 'poem': mk('div','poem'); break;
+      case 'stanza': mk('div','stanza'); break;
+      case 'v': mk('p','verse'); break;
+      case 'image': {
+        const href=n.getAttribute('l:href')||n.getAttribute('href')||'';
+        if(href.startsWith('#')){
+          const b=ctx.bins.get(href.slice(1));
+          if(b){ const blob=ctx.binBlob(b); if(blob){ const img=doc.createElement('img'); img.src=URL.createObjectURL(blob); img.alt=''; dst.appendChild(img); } }
+        }
+        break; }
+      case 'a': {
+        const href=n.getAttribute('l:href')||n.getAttribute('href')||'';
+        const a=doc.createElement('a');
+        if(href){
+          if(/^(https?:|mailto:)/i.test(href)){ a.setAttribute('href',href); a.setAttribute('target','_blank'); a.setAttribute('rel','noopener'); }
+          else a.setAttribute('href','#'+href.replace(/^#/,''));
+        }
+        walkFb2(n,a,ctx,inPoem);
+        dst.appendChild(a);
+        break; }
+      case 'emphasis': mk('em'); break;
+      case 'strong': mk('strong'); break;
+      case 'strikethrough': mk('s'); break;
+      case 'sub': mk('sub'); break;
+      case 'sup': mk('sup'); break;
+      case 'style': mk('span'); break;
+      case 'code': mk('code'); break;
+      case 'date': mk('span','fb-date'); break;
+      case 'table': case 'tr': case 'td': case 'th': case 'thead': case 'tbody': mk(t); break;
+      case 'section': {
+        const s=doc.createElement('section'); s.className='fb-section';
+        const id=n.getAttribute('id')||('fbs'+(ctx.secN++));
+        s.id=id;
+        const titleEl=[...n.children].find(e=>e.localName==='title');
+        if(titleEl&&!ctx.noToc){
+          const lbl=[...titleEl.getElementsByTagName('p')].map(p=>p.textContent.trim()).filter(Boolean).join('. ')||titleEl.textContent.trim();
+          if(lbl) ctx.toc.push({depth:fb2SectionDepth(n),label:lbl.replace(/\s+/g,' ').trim(),target:'#'+id});
+        }
+        walkFb2(n,s,ctx,false);
+        dst.appendChild(s);
+        break; }
+      default: { const e=doc.createElement('div'); walkFb2(n,e,ctx,inPoem); dst.appendChild(e); }
+    }
+  }
+}
+async function parseFb2(bytes,opts={}){
+  const text=decodeFb2(bytes);
+  const doc=new DOMParser().parseFromString(text,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length) throw new Error('битый XML — не похоже на FB2');
+  const root=doc.documentElement;
+  const ti=root.getElementsByTagName('title-info')[0];
+  const bt=ti&&ti.getElementsByTagName('book-title')[0];
+  const title=bt?bt.textContent.trim():'';
+  const authors=ti?[...ti.getElementsByTagName('author')].map(a=>{
+    const g=n=>{ const e=a.getElementsByTagName(n)[0]; return e?e.textContent.trim():''; };
+    return [g('first-name'),g('middle-name'),g('last-name')].filter(Boolean).join(' ');
+  }).filter(Boolean):[];
+  const author=authors.join(', ');
+  const langEl=ti&&ti.getElementsByTagName('lang')[0];
+  const lang=langEl?langEl.textContent.trim():'';
+  const annotEl=ti&&ti.getElementsByTagName('annotation')[0];
+
+  const bins=new Map();
+  for(const b of root.getElementsByTagName('binary')){
+    bins.set(b.getAttribute('id'),{ type:b.getAttribute('content-type')||'image/jpeg', data:(b.textContent||'').replace(/\s+/g,'') });
+  }
+  const binBlob=b=>{
+    try{
+      const s=atob(b.data);
+      const u=new Uint8Array(s.length);
+      for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i);
+      return new Blob([u],{type:/^image\//.test(b.type)?b.type:'image/jpeg'});
+    }catch(e){ return null; }
+  };
+  let coverBlob=null;
+  if(ti){
+    const cp=ti.getElementsByTagName('coverpage')[0];
+    if(cp){
+      const img=cp.getElementsByTagName('image')[0];
+      if(img){
+        const href=img.getAttribute('l:href')||img.getAttribute('href')||'';
+        const b=bins.get(href.replace(/^#/,''));
+        if(b) coverBlob=binBlob(b);
+      }
+    }
+  }
+  if(opts.metaOnly) return { title,author,lang,coverBlob,fmt:'fb2' };
+
+  const outDoc=document.implementation.createHTMLDocument('book');
+  const ctx={ doc:outDoc,bins,binBlob,secN:0,toc:[],noToc:false };
+  const content=[];
+  let annotHtml='';
+  if(annotEl){ const d=outDoc.createElement('div'); walkFb2(annotEl,d,ctx,false); annotHtml=d.innerHTML; }
+  const tp=outDoc.createElement('section');
+  tp.className='titlepage'; tp.id='tp';
+  tp.innerHTML=`<div class="tp-author">${esc(author||'')}</div><h1 class="tp-title">${esc(title||'Без названия')}</h1>`+
+    (annotHtml?`<div class="tp-annot">${annotHtml}</div>`:'');
+  content.push(tp);
+
+  const bodies=[...root.getElementsByTagName('body')];
+  for(const body of bodies){
+    const isNotes=body.getAttribute('name')==='notes';
+    if(isNotes) ctx.noToc=true;
+    const sec=outDoc.createElement('section');
+    sec.className=isNotes?'chapter fb-notes':'chapter';
+    sec.id=isNotes?'fb-notes-body':'fb-body-'+content.length;
+    walkFb2(body,sec,ctx,false);
+    if(isNotes){
+      const h=outDoc.createElement('h2'); h.textContent='Примечания';
+      sec.insertBefore(h,sec.firstChild);
+    }
+    content.push(sec);
+  }
+  return { title,author,lang,coverBlob,toc:ctx.toc,content };
+}
+
+/* ---------- разбор по формату ---------- */
+async function parseBookByRec(rec){
+  if(!('DecompressionStream' in window)) throw new Error('браузер без DecompressionStream — нужен современный Chrome/Firefox/Safari');
+  if(rec.fmt==='epub') return parseEpub(rec.file);
+  if(rec.fmt==='fb2') return parseFb2(rec.file);
+  throw new Error('неизвестный формат');
+}
+async function analyze(buf,name){
+  if(!('DecompressionStream' in window)) throw new Error('браузер без DecompressionStream — нужен современный Chrome/Firefox/Safari');
+  const lower=String(name||'').toLowerCase();
+  const u8=new Uint8Array(buf,0,Math.min(8,buf.byteLength));
+  const isZip=u8[0]===0x50&&u8[1]===0x4b;
+  if(lower.endsWith('.fb2')&&!isZip){
+    const m=await parseFb2(buf,{metaOnly:true});
+    return {...m,fmt:'fb2',file:buf};
+  }
+  if(isZip){
+    const zip=new Zip(buf);
+    if(zip.has('META-INF/encryption.xml')){ const e=new Error('drm'); e.drm=true; throw e; }
+    if(zip.has('META-INF/container.xml')){
+      const m=await parseEpub(buf,{metaOnly:true});
+      return {...m,fmt:'epub',file:buf};
+    }
+    const fb2Name=zip.names().find(n=>/\.fb2$/i.test(n));
+    if(fb2Name){
+      const inner=await zip.read(fb2Name);
+      const m=await parseFb2(inner,{metaOnly:true});
+      return {...m,fmt:'fb2',file:inner};
+    }
+    throw new Error('в архиве нет ни EPUB, ни FB2');
+  }
+  const head=new TextDecoder('utf-8').decode(new Uint8Array(buf,0,Math.min(2048,buf.byteLength)));
+  if(/<FictionBook/i.test(head)){
+    const m=await parseFb2(buf,{metaOnly:true});
+    return {...m,fmt:'fb2',file:buf};
+  }
+  if(/<\?xml|<html/i.test(head)) throw new Error('похоже на HTML/XML, но не на FB2 и не на EPUB');
+  throw new Error('не похоже на epub или fb2');
+}
+
+/* ---------- библиотека ---------- */
+const coverUrls=new Map();
+function sortBooks(books){
+  switch(S.sort){
+    case 'added': books.sort((a,b)=>b.added-a.added); break;
+    case 'title': books.sort((a,b)=>String(a.title).localeCompare(String(b.title),'ru')); break;
+    case 'author': books.sort((a,b)=>String(a.author||'я').localeCompare(String(b.author||'я'),'ru')); break;
+    default: books.sort((a,b)=>(b.opened||b.added)-(a.opened||a.added));
+  }
+}
+async function renderLibrary(){
+  let books=await idb.all();
+  const q=$('#search').value.trim().toLowerCase();
+  if(q) books=books.filter(b=>(String(b.title)+' '+String(b.author)).toLowerCase().includes(q));
+  sortBooks(books);
+  shelfEl.innerHTML='';
+  for(const b of books){
+    const card=document.createElement('div');
+    card.className='book'; card.dataset.id=b.id;
+    let coverHtml;
+    if(b.cover){
+      let u=coverUrls.get(b.id);
+      if(!u){ u=URL.createObjectURL(b.cover); coverUrls.set(b.id,u); }
+      coverHtml=`<img src="${u}" alt="" loading="lazy">`;
+    }else{
+      const h1=hash(String(b.title))%360, h2=(h1+50)%360;
+      coverHtml=`<div class="gen" style="background:linear-gradient(155deg,hsl(${h1} 35% 32%),hsl(${h2} 40% 16%))"><span class="gen-a">${esc(b.author||'')}</span><span class="gen-t">${esc(b.title)}</span></div>`;
+    }
+    const pct=Math.round((b.frac||0)*100);
+    card.innerHTML=`<div class="cover">${coverHtml}</div>
+      <div class="b-title" title="${esc(b.title)}">${esc(b.title)}</div>
+      <div class="b-author">${esc(b.author||'')}</div>
+      <div class="progress"${pct?'':' style="visibility:hidden"'}><i style="width:${pct}%"></i></div>
+      <button class="del" title="Убрать из библиотеки">×</button>`;
+    card.addEventListener('click',e=>{
+      const del=e.target.closest('.del');
+      if(del){
+        e.stopPropagation();
+        if(confirm(`Убрать «${b.title}» из библиотеки? Файл удалится из хранилища браузера.`)){
+          idb.del(b.id); coverUrls.delete(b.id); renderLibrary();
+        }
+        return;
+      }
+      openBook(b.id);
+    });
+    shelfEl.appendChild(card);
+  }
+  emptyEl.hidden=books.length>0;
+  countEl.textContent=books.length?`${books.length} ${plural(books.length)}`:'';
+}
+async function importFiles(files){
+  let ok=0;
+  for(const f of files){
+    try{
+      const buf=await f.arrayBuffer();
+      const meta=await analyze(buf,f.name);
+      const rec={
+        id:uid(), fmt:meta.fmt, file:meta.file,
+        title:meta.title||f.name.replace(/\.(epub|fb2|zip)$/i,''),
+        author:meta.author||'', lang:meta.lang||'',
+        cover:meta.coverBlob||null,
+        size:meta.file.byteLength, added:Date.now(), opened:0, frac:0,
+      };
+      await idb.put(rec);
+      ok++;
+    }catch(e){
+      toast(`${f.name}: ${e.drm?'книга с DRM — такие я принципиально не читаю':(e.message||'не смог разобрать файл')}`,6000);
+    }
+  }
+  readerEl.hidden=true; libEl.hidden=false;
+  await renderLibrary();
+  if(ok) toast(ok===1?'Книга добавлена в библиотеку':`Добавлено книг: ${ok}`);
+}
+
+/* ---------- читалка ---------- */
+const R={ id:null, rec:null, parsed:null, N:1, frac:0, saveT:0 };
+const cache=new Map();
+
+function mountBook(parsed){
+  flow.replaceChildren();
+  for(const el of parsed.content) flow.appendChild(document.importNode(el,true));
+  const pad=document.createElement('div');
+  pad.className='endpad';
+  flow.appendChild(pad);
+  if(parsed.lang) flow.lang=parsed.lang; else flow.removeAttribute('lang');
+}
+async function openBook(id){
+  const rec=await idb.get(id);
+  if(!rec) return;
+  R.id=id; R.rec=rec; R.frac=rec.frac||0;
+  libEl.hidden=true; readerEl.hidden=false;
+  closeDrawers();
+  rdTitle.textContent=rec.author?`${rec.title} — ${rec.author}`:rec.title;
+  flow.innerHTML='<div class="loading">Раскрываю книгу…</div>';
+  try{
+    let parsed=cache.get(id);
+    if(!parsed){ parsed=await parseBookByRec(rec); cache.set(id,parsed); }
+    R.parsed=parsed;
+    mountBook(parsed);
+    buildToc(parsed.toc||[]);
+    layout();
+    idb.update(id,{opened:Date.now()});
+    if(window.Android&&Android.keepScreenOn){ try{ Android.keepScreenOn(true); }catch(e){} }
+  }catch(e){
+    R.parsed=null;
+    flow.innerHTML=`<div class="loaderr">${e.drm
+      ?'Книга с DRM. Такие я не читаю — и не буду. Возьмите эту же книгу без защиты (EPUB/FB2 без DRM) — откроется сразу.'
+      :'Не смог раскрыть книгу: '+esc(e.message||e)}</div>`;
+  }
+}
+function layout(){
+  if(!R.parsed) return;
+  const w=scroller.clientWidth, h=scroller.clientHeight;
+  if(!w||!h) return;
+  const P=Math.min(S.margin,Math.max(16,Math.floor(w/8)));
+  const padY=clamp(Math.round(h*0.05),10,44);
+  flow.style.height=h+'px';
+  flow.style.width=w+'px';
+  flow.style.padding=padY+'px '+P+'px';
+  flow.style.columnGap=(2*P)+'px';
+  flow.style.columnWidth=(w-2*P)+'px';
+  flow.style.setProperty('--colh',(h-2*padY)+'px');
+  flow.style.setProperty('--endpad',(2*P)+'px');
+  const max=Math.max(0,scroller.scrollWidth-w);
+  R.maxScroll=max;
+  R.N=Math.max(1,Math.round(max/w)+1);
+  const page=Math.round(clamp(R.frac,0,1)*Math.max(0,R.N-1));
+  scroller.scrollLeft=Math.min(page*w,max);
+  updateProgressUI();
+}
+function updateProgressUI(){
+  const w=scroller.clientWidth||1;
+  const max=R.maxScroll||0;
+  const page=clamp(Math.round(scroller.scrollLeft/w),0,Math.max(0,R.N-1));
+  prog.max=Math.max(1,Math.round(max/w));
+  prog.value=Math.round(scroller.scrollLeft/w);
+  const pct=(R.N>1&&max>0)?Math.round(clamp(scroller.scrollLeft/max,0,1)*100):0;
+  progPct.textContent=pct+'%';
+  progPage.textContent=R.N>1?`${page+1} / ${R.N}`:'';
+}
+function turn(dir){
+  if(!R.parsed) return;
+  const w=scroller.clientWidth;
+  const max=Math.max(0,scroller.scrollWidth-w);
+  const cur=Math.round(scroller.scrollLeft/w);
+  let to=(cur+dir)*w;
+  if(to>max) to=max;
+  if(to<0) to=0;
+  scroller.scrollTo({left:to,behavior:'smooth'});
+}
+function scheduleSave(){
+  clearTimeout(R.saveT);
+  R.saveT=setTimeout(()=>{ if(R.id) idb.update(R.id,{frac:R.frac}); },800);
+}
+function buildToc(toc){
+  tocList.innerHTML='';
+  if(!toc.length){
+    const d=document.createElement('div');
+    d.className='toc-empty';
+    d.textContent='В книге нет оглавления.';
+    tocList.appendChild(d);
+    return;
+  }
+  for(const t of toc){
+    const b=document.createElement('button');
+    b.className='toc-item';
+    b.style.paddingLeft=(6+t.depth*16)+'px';
+    b.textContent=t.label;
+    b.addEventListener('click',()=>{ jump(t.target); });
+    tocList.appendChild(b);
+  }
+}
+function jump(target){
+  closeDrawers();
+  const el=flow.querySelector('#'+CSS.escape(String(target).slice(1)));
+  if(!el) return;
+  const P=Math.min(S.margin,Math.max(16,Math.floor(scroller.clientWidth/8)));
+  const x=el.getBoundingClientRect().left-scroller.getBoundingClientRect().left+scroller.scrollLeft;
+  scroller.scrollTo({left:Math.max(0,x-P),behavior:'auto'});
+  scheduleSave();
+}
+function closeDrawers(){ tocDrawer.hidden=true; setDrawer.hidden=true; }
+function backToLib(){
+  clearTimeout(R.saveT);
+  if(R.id&&R.parsed) idb.update(R.id,{frac:R.frac});
+  R.parsed=null; R.id=null; R.rec=null;
+  closeDrawers();
+  readerEl.hidden=true; libEl.hidden=false;
+  renderLibrary();
+  if(window.Android&&Android.keepScreenOn){ try{ Android.keepScreenOn(false); }catch(e){} }
+}
+
+/* ---------- события читалки ---------- */
+scroller.addEventListener('scroll',()=>{
+  if(!R.parsed) return;
+  const w=scroller.clientWidth||1;
+  const max=Math.max(0,scroller.scrollWidth-w);
+  R.maxScroll=max;
+  R.N=Math.max(1,Math.round(max/w)+1);
+  R.frac=max>0?clamp(scroller.scrollLeft/max,0,1):(scroller.scrollLeft>0?1:0);
+  updateProgressUI();
+  scheduleSave();
+},{passive:true});
+
+window.addEventListener('keydown',e=>{
+  if(!aboutM.hidden){
+    if(e.key==='Escape'||e.key==='Enter'){ aboutM.hidden=true; e.preventDefault(); }
+    return;
+  }
+  if(readerEl.hidden) return;
+  if(e.target.matches('input,select,textarea')) return;
+  switch(e.key){
+    case 'ArrowRight': case 'PageDown': case ' ': turn(1); e.preventDefault(); break;
+    case 'ArrowLeft': case 'PageUp': turn(-1); e.preventDefault(); break;
+    case 'Home': if(R.parsed){ scroller.scrollTo({left:0,behavior:'auto'}); e.preventDefault(); } break;
+    case 'End': if(R.parsed){ scroller.scrollTo({left:R.maxScroll||0,behavior:'auto'}); e.preventDefault(); } break;
+    case 'Escape':
+      if(!tocDrawer.hidden||!setDrawer.hidden) closeDrawers();
+      else backToLib();
+      break;
+  }
+});
+
+let wAcc=0,wT=0;
+scroller.addEventListener('wheel',e=>{
+  if(!R.parsed) return;
+  e.preventDefault();
+  const d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;
+  const now=Date.now();
+  if(now-wT>300) wAcc=0;
+  wAcc+=d; wT=now;
+  if(Math.abs(wAcc)>=60){ turn(wAcc>0?1:-1); wAcc=0; }
+},{passive:false});
+
+scroller.addEventListener('click',e=>{
+  if(!R.parsed) return;
+  if(!getSelection().isCollapsed) return;
+  if(e.target.closest('a')) return;
+  const r=scroller.getBoundingClientRect();
+  const x=e.clientX-r.left;
+  if(x<r.width*0.18) turn(-1);
+  else if(x>r.width*0.82) turn(1);
+});
+
+let touchS=null;
+scroller.addEventListener('touchstart',e=>{ touchS={x:e.touches[0].clientX,y:e.touches[0].clientY}; },{passive:true});
+scroller.addEventListener('touchend',e=>{
+  if(!touchS||!R.parsed) return;
+  const dx=e.changedTouches[0].clientX-touchS.x, dy=e.changedTouches[0].clientY-touchS.y;
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) turn(dx<0?1:-1);
+  touchS=null;
+},{passive:true});
+
+prog.addEventListener('input',()=>{
+  if(!R.parsed) return;
+  const max=Math.max(0,scroller.scrollWidth-scroller.clientWidth);
+  const unit=scroller.clientWidth;
+  const page=+prog.value;
+  scroller.scrollLeft=Math.min(page*unit,max);
+});
+
+let rzT;
+window.addEventListener('resize',()=>{
+  if(readerEl.hidden) return;
+  clearTimeout(rzT);
+  rzT=setTimeout(layout,150);
+});
+
+/* ---------- события панелей и настроек ---------- */
+$('#backBtn').addEventListener('click',backToLib);
+$('#tocBtn').addEventListener('click',()=>{ setDrawer.hidden=true; tocDrawer.hidden=!tocDrawer.hidden; });
+$('#setBtn').addEventListener('click',()=>{ tocDrawer.hidden=true; setDrawer.hidden=!setDrawer.hidden; });
+tocDrawer.querySelector('.close').addEventListener('click',()=>tocDrawer.hidden=true);
+setDrawer.querySelector('.close').addEventListener('click',()=>setDrawer.hidden=true);
+
+$('#setTheme').addEventListener('click',e=>{ const b=e.target.closest('.pill'); if(!b)return; S.theme=b.dataset.v; saveSettings(); applySettings(); });
+$('#setFont').addEventListener('click',e=>{ const b=e.target.closest('.pill'); if(!b)return; S.font=b.dataset.v; saveSettings(); applySettings(); layout(); });
+$('#setSize').addEventListener('input',e=>{ S.size=+e.target.value; $('#sizeVal').textContent=S.size+'px'; saveSettings(); applySettings(); layout(); });
+$('#setLh').addEventListener('input',e=>{ S.lh=+e.target.value; $('#lhVal').textContent=S.lh.toFixed(2); saveSettings(); applySettings(); layout(); });
+$('#setMargin').addEventListener('input',e=>{ S.margin=+e.target.value; $('#marginVal').textContent=S.margin+'px'; saveSettings(); applySettings(); layout(); });
+$('#setJustify').addEventListener('change',e=>{ S.justify=e.target.checked; saveSettings(); applySettings(); layout(); });
+$('#setHyph').addEventListener('change',e=>{ S.hyph=e.target.checked; saveSettings(); applySettings(); layout(); });
+$('#setReset').addEventListener('click',()=>{ S=Object.assign({},DEFAULTS); saveSettings(); applySettings(); layout(); });
+
+/* ---------- события библиотеки ---------- */
+$('#addBtn').addEventListener('click',()=>$('#fileInput').click());
+$('#fileInput').addEventListener('change',e=>{ if(e.target.files.length) importFiles([...e.target.files]); e.target.value=''; });
+$('#aboutBtn').addEventListener('click',()=>aboutM.hidden=false);
+$('#modalClose').addEventListener('click',()=>aboutM.hidden=true);
+aboutM.addEventListener('click',e=>{ if(e.target===aboutM) aboutM.hidden=true; });
+
+let searchT;
+$('#search').addEventListener('input',()=>{ clearTimeout(searchT); searchT=setTimeout(renderLibrary,200); });
+$('#sort').addEventListener('change',e=>{ S.sort=e.target.value; saveSettings(); renderLibrary(); });
+
+let dragDepth=0;
+window.addEventListener('dragenter',e=>{ e.preventDefault(); dragDepth++; dropEl.hidden=false; });
+window.addEventListener('dragover',e=>{ e.preventDefault(); });
+window.addEventListener('dragleave',()=>{ dragDepth=Math.max(0,dragDepth-1); if(!dragDepth) dropEl.hidden=true; });
+window.addEventListener('drop',e=>{
+  e.preventDefault(); dragDepth=0; dropEl.hidden=true;
+  if(e.dataTransfer&&e.dataTransfer.files.length) importFiles([...e.dataTransfer.files]);
+});
+
+/* ---------- старт ---------- */
+applySettings();
+renderLibrary();
+
+/* книга, открытая из проводника (Android VIEW intent) */
+async function importIntentBook(){
+  try{
+    if(!(window.Android&&Android.intentBook)) return;
+    const raw=Android.intentBook();
+    if(raw&&raw.indexOf('|')>0){
+      const i=raw.indexOf('|');
+      const name=raw.slice(0,i), b64=raw.slice(i+1);
+      const bin=atob(b64);
+      const u=new Uint8Array(bin.length);
+      for(let k=0;k<bin.length;k++) u[k]=bin.charCodeAt(k);
+      await importFiles([new File([u],name||'книга.epub')]);
+    }
+  }catch(e){ console.warn('intent book:',e); }
+}
+window.__intentBook=importIntentBook;
+importIntentBook();
+
+/* крючки для автоматизации и Android-обёртки */
+window.__r={
+  importFiles, openBook, idb, layout, turn, renderLibrary, analyze, R, cache,
+  backToLibrary:backToLib,
+  isReading:()=>!readerEl.hidden&&!!R.parsed,
+  S, applySettings, parseEpub, Zip,
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Android build outputs
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/captures/
+
+# IDE
+.idea/
+.vscode/
+
+# тестовые артефакты
+shot-*.png
+*.log
+__pycache__/

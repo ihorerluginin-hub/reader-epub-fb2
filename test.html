@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>test harness</title></head>
+<body><pre id="out">running…</pre>
+<iframe id="app" style="width:1280px;height:800px;border:0"></iframe>
+<script>
+'use strict';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function log(s){ document.getElementById('out').textContent += s+'\n'; }
+window.results=[];
+async function fetchBook(url,name){
+  const r=await fetch(url);
+  if(!r.ok) throw new Error('fetch '+url+' -> '+r.status);
+  return new File([await r.arrayBuffer()],name);
+}
+(async function(){
+  try{
+    const app=document.getElementById('app');
+    app.src='index.html';
+    await new Promise(r=>app.onload=r);
+    await sleep(400);
+    const w=app.contentWindow, d=app.contentDocument;
+    if(!w.__r) throw new Error('нет window.__r — приложение не загрузилось');
+    const R=w.__r;
+
+    // сценарий 1: импорт всех фикстур
+    const files=[
+      await fetchBook('fixtures/sample.epub','sample.epub'),
+      await fetchBook('fixtures/sample.fb2','sample.fb2'),
+      await fetchBook('fixtures/sample-1251.fb2','sample-1251.fb2'),
+      await fetchBook('fixtures/sample.fb2.zip','sample.fb2.zip'),
+      await fetchBook('fixtures/drm.epub','drm.epub'),
+    ];
+    await R.importFiles(files);
+    await sleep(300);
+    const lib=await R.idb.all();
+    log('SC1 imported='+lib.length+' (ожидалось 4, drm должен отвалиться)');
+    for(const b of lib) log('  book: fmt='+b.fmt+' title="'+b.title+'" author="'+b.author+'" cover='+(b.cover?'yes':'no')+' size='+b.size);
+
+    // сценарий 2: открыть epub
+    const epub=lib.find(b=>b.fmt==='epub');
+    await R.openBook(epub.id);
+    await sleep(600);
+    const flow=d.getElementById('flow'), sc=d.getElementById('scroller');
+    log('SC2 epub opened, reading='+R.isReading());
+    log('  sections='+flow.querySelectorAll(':scope>section').length+' (титул+3 главы=4)');
+    log('  N='+R.R.N+' maxScroll='+R.R.maxScroll+' scrollWidth='+sc.scrollWidth+' clientWidth='+sc.clientWidth);
+    log('  imgs with blob src='+flow.querySelectorAll('img[src^="blob:"]').length);
+    log('  scripts left='+flow.querySelectorAll('script').length+' style tags='+flow.querySelectorAll('style').length);
+    log('  inline evil style stripped='+!flow.querySelector('[style*="position:absolute"]'));
+    // перелистнуть дважды
+    R.turn(1); await sleep(600); R.turn(1); await sleep(600);
+    log('  after 2 turns: scrollLeft='+Math.round(sc.scrollLeft)+' frac='+R.R.frac.toFixed(3)+' pct text='+d.getElementById('progPct').textContent);
+    // оглавление
+    const tocBtns=d.querySelectorAll('#tocList .toc-item');
+    log('  toc entries='+tocBtns.length);
+    let tocLabels=[]; tocBtns.forEach(b=>tocLabels.push(b.textContent.trim()));
+    log('  toc: '+JSON.stringify(tocLabels));
+    // переход по оглавлению к 3-й главе
+    const toc3=[...tocBtns].find(b=>b.textContent.includes('Глава третья'));
+    if(toc3){ toc3.click(); await sleep(300); log('  jump to ch3: scrollLeft='+Math.round(sc.scrollLeft)); }
+    // внутренняя ссылка ch1 -> ch2#note1
+    const a=d.querySelector('#sp0 a[href^="#c1-note1"]');
+    log('  cross-file note link rewritten='+(!!a)+' href='+(a?a.getAttribute('href'):'—'));
+    // настройки: размер шрифта
+    R.S.size=24; R.applySettings(); R.layout(); await sleep(100);
+    log('  after size 24: N='+R.R.N+' fontSize='+getComputedStyle(flow).fontSize);
+    // тема
+    R.S.theme='dark'; R.applySettings();
+    log('  theme dark: body[data-theme]='+d.body.dataset.theme+' bg='+getComputedStyle(d.body).backgroundColor);
+    // назад в библиотеку
+    R.backToLibrary(); await sleep(300);
+    const epubAfter=await R.idb.get(epub.id);
+    log('SC2 saved frac='+(epubAfter.frac||0).toFixed(3));
+
+    // сценарий 3: fb2
+    const fb2=lib.find(b=>b.title.includes('Камерная'));
+    await R.openBook(fb2.id); await sleep(600);
+    log('SC3 fb2: reading='+R.isReading()+' sections='+flow.querySelectorAll(':scope>section').length);
+    log('  poems='+flow.querySelectorAll('.poem').length+' epigraphs='+flow.querySelectorAll('.epigraph').length+' notes sec='+flow.querySelectorAll('.fb-notes').length);
+    log('  note link='+JSON.stringify([...flow.querySelectorAll('a[href^="#note1"]')].map(a=>a.getAttribute('href'))));
+    log('  img in body='+flow.querySelectorAll('img[src^="blob:"]').length);
+    const tocF=d.querySelectorAll('#tocList .toc-item');
+    log('  toc entries='+tocF.length+': '+JSON.stringify([...tocF].map(b=>b.textContent.trim())));
+    R.backToLibrary(); await sleep(200);
+
+    // сценарий 4: 1251
+    const old1251=lib.find(b=>b.title.includes('двадцать пять первой'));
+    await R.openBook(old1251.id); await sleep(600);
+    const t=flow.textContent;
+    log('SC4 1251: кракозябр='+/�/.test(t)+' читаемый текст='+t.includes('распознана правильно'));
+    R.backToLibrary(); await sleep(200);
+
+    // сценарий 5: fb2.zip
+    const zipped=lib.find(b=>b.title.includes('Камерная')===false&&b.fmt==='fb2'&&b!==old1251&&b!==fb2);
+    log('SC5 fb2.zip title="'+(zipped?zipped.title:'НЕ НАЙДЕНА')+'"');
+
+    // сценарий 6: прогресс восстановился
+    await R.openBook(epub.id); await sleep(700);
+    log('SC6 reopened: frac='+R.R.frac.toFixed(3)+' scrollLeft='+Math.round(sc.scrollLeft)+' of '+R.maxScroll+' pct='+d.getElementById('progPct').textContent);
+    R.backToLibrary();
+
+    log('ALL DONE');
+  }catch(e){
+    log('FAIL: '+(e&&e.stack||e));
+  }
+  document.title='HARNESS-DONE';
+})();
+</script></body></html>
