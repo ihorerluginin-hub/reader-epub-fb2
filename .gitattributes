@@ -1,0 +1,3 @@
+# у шелл-скрипта gradlew должны быть LF-концы строк, иначе он не запускается на unix
+gradlew text eol=lf
+*.bat text eol=crlf
